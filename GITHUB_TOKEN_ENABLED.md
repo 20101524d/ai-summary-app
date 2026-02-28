@@ -23,7 +23,7 @@
 
 您的 `.env.local` 中包含：
 ```env
-GITHUB_TOKEN=<REDACTED>
+GITHUB_TOKEN=<github_pat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx>
 ```
 
 ✅ **系统将使用 GitHub Models**
