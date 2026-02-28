@@ -10,6 +10,10 @@ A Next.js application for uploading, managing, and previewing files (PDF, Markdo
   - Markdown: Formatted preview + raw source view
   - TXT: Text view with scrolling
 - **Manage files**: View file list, delete files
+- **AI Summaries**: Generate AI-powered summaries using OpenAI's GPT-4 mini model
+  - Custom prompts per file for tailored summaries
+  - Default prompt for when no custom prompt is set
+  - Summary storage in database
 - **Responsive design**: Mobile-friendly UI
 
 ## Tech Stack
@@ -17,7 +21,8 @@ A Next.js application for uploading, managing, and previewing files (PDF, Markdo
 - **Framework**: Next.js
 - **Backend**: Serverless functions (Vercel compatible)
 - **Database & Storage**: Supabase
-- **Dependencies**: react, pdf-parse, markdown-it
+- **AI**: OpenAI GPT-4 mini (via @ai-sdk)
+- **Dependencies**: react, pdf-parse, markdown-it, ai, @ai-sdk/openai
 
 ## Quick Start
 
@@ -82,6 +87,27 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) to view the app.
 
+### 6. (Optional) Set Up AI Summary Feature
+
+To enable AI-powered summaries:
+
+1. Choose your AI provider:
+   - **GitHub Models** (recommended) - See [GITHUB_MODELS.md](./GITHUB_MODELS.md)
+   - **OpenAI API** - See [AI_SETUP.md](./AI_SETUP.md)
+
+2. Add credentials to `.env.local`:
+   ```env
+   # Option 1: GitHub Models (priority by default)
+   GITHUB_TOKEN=github_pat_...
+   
+   # Option 2: OpenAI (used if GitHub Token not available)
+   OPENAI_API_KEY=sk-...
+   ```
+
+3. Run the SQL setup commands from [DATABASE_SETUP.sql](./DATABASE_SETUP.sql)
+
+4. Restart the dev server
+
 ## API Endpoints
 
 ### Files
@@ -97,6 +123,33 @@ Open [http://localhost:3000](http://localhost:3000) to view the app.
   ```
 
 - **DELETE `/api/files/[id]`** - Delete a file by ID
+
+### AI Summaries
+
+- **GET `/api/summary?file_id={id}`** - Get existing summary
+  ```json
+  { "id": 1, "content": "...", "created_at": "...", "updated_at": "..." }
+  ```
+
+- **POST `/api/summary`** - Generate or update summary
+  ```json
+  { "file_id": 123 }
+  ```
+
+### Prompts (AI Settings)
+
+- **GET `/api/prompts`** - List all prompts
+
+- **GET `/api/prompts/{id}`** - Get prompt for specific file (or default)
+
+- **PUT `/api/prompts/{id}`** - Update/create prompt for file
+  ```json
+  { "prompt_text": "Custom prompt text here..." }
+  ```
+
+- **DELETE `/api/prompts/{id}`** - Delete custom prompt for file
+
+See [AI_SETUP.md](./AI_SETUP.md) for detailed AI configuration and usage.
 
 ## Building & Deployment
 
@@ -131,6 +184,12 @@ npm start
 **Preview not showing**: Ensure Supabase bucket is public or has appropriate CORS settings.
 
 **Build fails**: Run `npm install` to ensure all dependencies are installed.
+
+**AI Summary generation fails**: 
+- Check `OPENAI_API_KEY` is set in `.env.local`
+- Verify OpenAI account has available credits
+- Check database tables are created (run [DATABASE_SETUP.sql](./DATABASE_SETUP.sql))
+- See [AI_SETUP.md](./AI_SETUP.md) for troubleshooting
 
 ## Development Tips
 

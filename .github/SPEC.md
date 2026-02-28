@@ -40,7 +40,28 @@
 - MD 文本提取（直接 UTF-8 读取）✅
 - TXT 文本提取（直接 UTF-8 读取）✅
 
+## 待实现功能:
+
+⏳ **AI 总结功能**
+- 添加 AI 总结功能，使用 GitHub-hosted Model 的 GPT-4 mini 模型
+- 生成的总结存储在数据库中
+- 在文件详情页新增标签显示总结内容
+
+⏳ **AI 總結設置功能**
+- 允许用户为 AI 设置提示词（系统 prompt）
+- 设置界面包含输入框和保存按钮
+- 提示词存储在数据库中，在生成总结时使用
+- 支持设置默认提示词
+- 支持为不同文件设置不同的提示词
+- 每个文件的总结内容和提示词独立存储
+- 若某文件未设置提示词，则使用默认提示词生成总结
+
 ## 功能详细说明:
+
+✅ **已实现的文本提取功能**
+- PDF 文本提取（使用 pdf-parse）✅ 实现完成
+- MD 文本提取（直接 UTF-8 读取）✅
+- TXT 文本提取（直接 UTF-8 读取）✅
 
 ### 1. 文件上传功能 & PDF 文本提取
 - 支持 PDF、MD、TXT 格式
@@ -99,6 +120,51 @@
 | 文件处理 | pdf-parse | 2.4.5 |
 | Markdown | markdown-it | 14.0.0 |
 | 文件上传 | formidable | 3.5.4 |
+| AI SDK | @ai-sdk/openai | 最新 |
+| AI | ai | 最新 |
+
+## 数据库表结构
+
+### files 表（已存在）
+```sql
+CREATE TABLE files (
+  id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  name TEXT NOT NULL,
+  path TEXT NOT NULL,
+  size INT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+```
+
+### summaries 表（新建）
+用于存储 AI 生成的文件总结内容。
+```sql
+CREATE TABLE summaries (
+  id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  file_id BIGINT NOT NULL REFERENCES files(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  model TEXT DEFAULT 'gpt-4-mini',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  UNIQUE(file_id)
+);
+```
+
+### prompts 表（新建）
+用于存储用户设置的提示词。
+```sql
+CREATE TABLE prompts (
+  id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  file_id BIGINT REFERENCES files(id) ON DELETE CASCADE,
+  prompt_text TEXT NOT NULL,
+  is_default BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+-- 创建索引
+CREATE INDEX idx_prompts_file_id ON prompts(file_id);
+CREATE INDEX idx_prompts_is_default ON prompts(is_default) WHERE is_default = TRUE;
+```
 
 ## 项目结构
 
@@ -106,14 +172,22 @@
 my-app/
 ├── pages/
 │   ├── index.js                    # 主页面（文件列表和详情）
+│   ├── settings.js                 # 提示词设置页面（新建）
 │   └── api/
 │       ├── files/
 │       │   ├── index.js            # GET/POST 文件列表和上传
 │       │   └── [id].js             # DELETE 删除文件
-│       └── summary.js              # 摘要 API（预留）
+│       ├── summary.js              # POST 生成总结（新建）
+│       │   # 请求体: { file_id }
+│       │   # 响应: { summary_id, content }
+│       └── prompts/
+│           ├── index.js            # GET 获取默认提示词（新建）
+│           ├── [id].js             # GET/PUT/DELETE 文件特定提示词（新建）
+│           └── default.js          # POST 设置默认提示词（新建）
 ├── lib/
 │   ├── supabaseServer.js           # Supabase 服务端客户端
-│   └── supabaseClient.js           # Supabase 客户端（预留）
+│   ├── supabaseClient.js           # Supabase 客户端（预留）
+│   └── ai.js                       # AI 调用相关函数（新建）
 ├── public/                         # 静态资源
 ├── .next/                          # Next.js 构建输出（git 忽略）
 ├── next.config.js                  # Next.js 配置
@@ -174,5 +248,20 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 |------|---------|
 | 2026-02-28 | 初始实现：上传、预览、删除功能；现代化 UI；完整文档 |
 | 2026-02-28 | ✅ PDF 文本提取完成实现：使用 pdf-parse 库，支持 serverless 环境 |
+| 2026-02-28 | ⏳ 新增需求：AI 总结功能、提示词设置功能（规划设计中） |
 
 后续如有新需求，请在本文件追加条目并说明变更日期。
+
+## 环境变量配置
+
+需要在 `.env.local` 中添加以下变量用于 AI 功能：
+```env
+# 现有配置
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# 新增 AI 配置
+GITHUB_TOKEN=your-github-token  # 用于调用 GitHub 的 AI 模型（如果使用）
+# 或
+OPENAI_API_KEY=your-openai-key  # 用于调用 OpenAI 的 GPT-4 mini 模型
+```

@@ -13,16 +13,10 @@ async function parsePdf(buffer) {
     console.log('[PDF Parse] Starting PDF text extraction...')
     
     // pdf-parse is Node.js optimized library for PDF text extraction
-    const { PDFParse } = require('pdf-parse')
+    const pdf = require('pdf-parse')
     
-    // Create parser instance and load PDF (must be Uint8Array, not Buffer)
-    const uint8Array = new Uint8Array(buffer)
-    const parser = new PDFParse(uint8Array)
-    await parser.load()
-    
-    // Get text from all pages
-    const result = await parser.getText()
-    const data = { text: result.text, numpages: result.pages?.length || 1 }
+    // Parse PDF buffer directly
+    const data = await pdf(buffer)
     
     console.log('[PDF Parse] PDF parsed, pages:', data.numpages)
     console.log('[PDF Parse] Extracted text length:', data.text.length)
