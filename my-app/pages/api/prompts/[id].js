@@ -2,7 +2,7 @@ import { createSupabaseServer } from '../../../lib/supabaseServer'
 
 export default async function handler(req, res) {
   const supabase = createSupabaseServer()
-  const { file_id } = req.query
+  const { id: file_id } = req.query
 
   if (req.method === 'GET') {
     // 获取指定文件的提示词，如果没有则获取默认提示词
@@ -26,7 +26,7 @@ export default async function handler(req, res) {
         const { data: defaultPrompt, error: defaultError } = await supabase
           .from('prompts')
           .select('id, prompt_text')
-          .eq('file_id', null)
+          .is('file_id', null)
           .eq('is_default', true)
           .single()
 
@@ -40,7 +40,7 @@ export default async function handler(req, res) {
         const { data: defaultPrompt, error } = await supabase
           .from('prompts')
           .select('id, prompt_text')
-          .eq('file_id', null)
+          .is('file_id', null)
           .eq('is_default', true)
           .single()
 
@@ -101,7 +101,7 @@ export default async function handler(req, res) {
         const { data: existing } = await supabase
           .from('prompts')
           .select('id')
-          .eq('file_id', null)
+          .is('file_id', null)
           .eq('is_default', true)
           .single()
 

@@ -151,6 +151,9 @@ export default function Home() {
   const [files, setFiles] = useState([])
   const [selected, setSelected] = useState(null)
   const [uploading, setUploading] = useState(false)
+  const [showDefaultPromptSettings, setShowDefaultPromptSettings] = useState(false)
+  const [defaultPrompt, setDefaultPrompt] = useState('')
+  const [savingDefaultPrompt, setSavingDefaultPrompt] = useState(false)
 
   async function fetchFiles() {
     const res = await fetch('/api/files')
@@ -158,7 +161,50 @@ export default function Home() {
     setFiles(json.files || [])
   }
 
-  useEffect(() => { fetchFiles() }, [])
+  async function loadDefaultPrompt() {
+    try {
+      const res = await fetch('/api/prompts/default')
+      if (res.ok) {
+        const data = await res.json()
+        if (data?.prompt_text) {
+          setDefaultPrompt(data.prompt_text)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load default prompt:', err)
+    }
+  }
+
+  async function saveDefaultPrompt() {
+    if (!defaultPrompt.trim()) {
+      alert('Default prompt cannot be empty')
+      return
+    }
+    setSavingDefaultPrompt(true)
+    try {
+      const res = await fetch('/api/prompts/default', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt_text: defaultPrompt }),
+      })
+      if (res.ok) {
+        setShowDefaultPromptSettings(false)
+        alert('Default prompt saved successfully!')
+      } else {
+        const err = await res.json()
+        alert(`Failed: ${err.error}`)
+      }
+    } catch (error) {
+      alert(`Error: ${error.message}`)
+    } finally {
+      setSavingDefaultPrompt(false)
+    }
+  }
+
+  useEffect(() => { 
+    fetchFiles()
+    loadDefaultPrompt()
+  }, [])
 
   async function handleUpload(e) {
     const file = e.target.files[0]
@@ -202,7 +248,90 @@ export default function Home() {
               {uploading ? '⏳ Uploading...' : '📁 Choose File (PDF, MD, TXT)'}
             </span>
           </label>
+          <button 
+            onClick={() => setShowDefaultPromptSettings(!showDefaultPromptSettings)}
+            style={{
+              display: 'inline-block',
+              marginLeft: '12px',
+              backgroundColor: showDefaultPromptSettings ? '#666' : '#0066cc',
+              color: 'white',
+              padding: '12px 24px',
+              borderRadius: '6px',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'background-color 0.2s',
+            }}
+          >
+            ⚙️ Default Prompt
+          </button>
         </div>
+
+        {showDefaultPromptSettings && (
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            padding: '20px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            marginBottom: '20px',
+          }}>
+            <h3 style={{ marginTop: '0', marginBottom: '12px' }}>Set Default AI Prompt</h3>
+            <p style={{ fontSize: '13px', color: '#666', marginBottom: '12px' }}>
+              This prompt will be used for all files that don't have a custom prompt set.
+            </p>
+            <textarea
+              style={{
+                width: '100%',
+                minHeight: '100px',
+                padding: '10px',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                fontFamily: 'system-ui, monospace',
+                fontSize: '13px',
+                boxSizing: 'border-box',
+                marginBottom: '12px'
+              }}
+              value={defaultPrompt}
+              onChange={(e) => setDefaultPrompt(e.target.value)}
+              placeholder="Enter default prompt (e.g., '用一句话总结' or '生成一份详细的文档总结')"
+            />
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                onClick={saveDefaultPrompt}
+                disabled={savingDefaultPrompt}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#0066cc',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: savingDefaultPrompt ? 'not-allowed' : 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  opacity: savingDefaultPrompt ? 0.6 : 1,
+                }}
+              >
+                {savingDefaultPrompt ? '💾 Saving...' : '💾 Save'}
+              </button>
+              <button 
+                onClick={() => setShowDefaultPromptSettings(false)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#999',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
 
         <div style={styles.flexContainer}>
           <section style={styles.fileListSection}>
@@ -265,6 +394,7 @@ function Tabs({ file }) {
   const [promptText, setPromptText] = useState('')
   const [showPromptSettings, setShowPromptSettings] = useState(false)
   const [savingPrompt, setSavingPrompt] = useState(false)
+  const [isDefault, setIsDefault] = useState(false)
 
   const { type, url, text, name } = file
   const isPDF = type === 'application/pdf' || name.endsWith('.pdf')
@@ -345,6 +475,33 @@ function Tabs({ file }) {
       } else {
         const err = await res.json()
         alert(`Failed to save prompt: ${err.error}`)
+      }
+    } catch (error) {
+      alert(`Error: ${error.message}`)
+    } finally {
+      setSavingPrompt(false)
+    }
+  }
+
+  async function saveDefaultPrompt() {
+    if (!promptText.trim()) {
+      alert('Prompt text cannot be empty')
+      return
+    }
+    setSavingPrompt(true)
+    try {
+      const res = await fetch('/api/prompts/default', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt_text: promptText }),
+      })
+      if (res.ok) {
+        setShowPromptSettings(false)
+        setIsDefault(true)
+        alert('Default prompt saved successfully!')
+      } else {
+        const err = await res.json()
+        alert(`Failed to save default prompt: ${err.error}`)
       }
     } catch (error) {
       alert(`Error: ${error.message}`)
@@ -579,9 +736,22 @@ function Tabs({ file }) {
                   onChange={(e) => setPromptText(e.target.value)}
                   placeholder="Enter custom prompt for AI summary generation..."
                 />
+                
+                <div style={{ marginTop: '12px', marginBottom: '12px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={isDefault}
+                      onChange={(e) => setIsDefault(e.target.checked)}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    Also save as default prompt (used when file has no custom prompt)
+                  </label>
+                </div>
+
                 <div style={tabStyles.promptButtons}>
                   <button 
-                    onClick={saveFilePrompt}
+                    onClick={isDefault ? saveDefaultPrompt : saveFilePrompt}
                     disabled={savingPrompt}
                     style={{
                       ...tabStyles.smallButton,
@@ -589,7 +759,7 @@ function Tabs({ file }) {
                       cursor: savingPrompt ? 'not-allowed' : 'pointer'
                     }}
                   >
-                    {savingPrompt ? '💾 Saving...' : '💾 Save Prompt'}
+                    {savingPrompt ? '💾 Saving...' : isDefault ? '💾 Save as Default' : '💾 Save Prompt'}
                   </button>
                   {promptText && (
                     <button 

@@ -79,7 +79,7 @@ export default async function handler(req, res) {
       const { data: defaultPrompt } = await supabase
         .from('prompts')
         .select('prompt_text')
-        .eq('file_id', null)
+        .is('file_id', null)
         .eq('is_default', true)
         .single()
 
